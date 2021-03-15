@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<project name="mxgraph-svg2shape" default="main" basedir=".">
+	<property name="encoding" value="UTF-8" />
+	<property name="jar.name" value="mxgraph-svg2shape.jar" />
+	<property name="dest.dir" value="../mxgraph-svg2shape/lib" />
+	<property name="webplatforma.path" value="../WebPlatforma" />
+
+	<target name="main">
+		<ant antfile="${webplatforma.path}/build_common.xml" target="compile-jar" inheritall="true" inheritRefs="true">
+			<property name="source.dir" value="src/main/java" />
+		</ant>
+	</target>
+</project>
