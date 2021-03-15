@@ -2,7 +2,7 @@
 
 <project name="mxgraph-svg2shape" default="main" basedir=".">
 	<property name="encoding" value="UTF-8" />
-	<property name="jar.name" value="mxgraph-svg2shape.jar" />
+	<property name="jar.name" value="mxgraph-svg2shape-0.1.0-SNAPSHOT.jar" />
 	<property name="dest.dir" value="../mxgraph-svg2shape/lib" />
 	<property name="webplatforma.path" value="../WebPlatforma" />
 
