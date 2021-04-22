@@ -10,9 +10,14 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -154,120 +159,57 @@ public class Shape2Xml
             String pointsString = element.getAttribute("points");
             int dn = configDoc.getDecimalsToRound();
 
-            pointsString = pointsString.replaceAll("\\s{2,}", " ");
-            pointsString = pointsString.replaceAll("E -", "E-");
-            pointsString = pointsString.replaceAll("e -", "e-");
+            String pnts = pointsString;
+            pnts = pnts.replaceAll("\\s{2,}", " ");
+            pnts = pnts.replaceAll("E -", "E-");
+            pnts = pnts.replaceAll("e -", "e-");
 
-            String newPointsString = "";
-            double x = 0;
-            double y = 0;
-            String xString;
-            String yString;
-            double xNew;
-            double yNew;
-
-            // a loop that reads the coords
-            int commaIndex = pointsString.indexOf(",");
-            int spaceIndex = pointsString.indexOf(" ", commaIndex + 1);
-
-            if (spaceIndex == -1)
+            String[] pointStrArray = pnts.trim().split(",| ");
+            if (pointStrArray.length % 2 > 0)
             {
-                spaceIndex = pointsString.length();
+                /*
+                 * делаем четное число точек
+                 */
+                pointStrArray = Arrays.copyOf(pointStrArray,
+                    pointStrArray.length - 1);
             }
-
-            if (commaIndex != -1)
+            /*
+             * Превращаем точки в строку вида x y, x1 y1, x2 y2, x3 y3
+             */
+            List<double[]> pointList = new ArrayList<double[]>();
+            for (int i = 0; i < pointStrArray.length - 1; i++)
             {
-                while ((commaIndex != -1) && (spaceIndex > commaIndex))
-                {
-                    // read x
-                    xString = pointsString.substring(0, commaIndex);
-                    // read y
-                    yString = pointsString.substring(commaIndex + 1,
-                        spaceIndex);
+                String xString = pointStrArray[i];
+                String yString = pointStrArray[i + 1];
 
-                    x = Double.valueOf(xString);
-                    y = Double.valueOf(yString);
+                try
+                {
+                    double x = Double.valueOf(xString);
+                    double y = Double.valueOf(yString);
                     x = x - configDoc.getStencilBoundsMinX();
                     y = y - configDoc.getStencilBoundsMinY();
 
-                    // add the new coords to the new string
-                    xNew = roundToDecimals(x * s, dn);
-                    yNew = roundToDecimals(y * s, dn);
-
-                    newPointsString += xNew + "," + yNew + " ";
-
-                    pointsString = pointsString.substring(spaceIndex,
-                        pointsString.length());
-
-                    commaIndex = pointsString.indexOf(",");
-                    spaceIndex = pointsString.indexOf(" ", commaIndex + 1);
-
-                    if (spaceIndex == -1)
-                    {
-                        spaceIndex = pointsString.length();
-                    }
+                    double xNew = roundToDecimals(x * s, dn);
+                    double yNew = roundToDecimals(y * s, dn);
+                    
+                    pointList.add(new double[] {xNew, yNew});
                 }
-            }
-            else if (spaceIndex > -1)
-            {
-                spaceIndex = pointsString.indexOf(" ");
-                int spaceIndex2 = pointsString.indexOf(" ", spaceIndex + 1);
-
-                while (spaceIndex2 != spaceIndex)
+                catch (Exception ex)
                 {
-                    // read x
-                    xString = pointsString.substring(0, spaceIndex);
-                    // read y
-                    yString = pointsString.substring(spaceIndex + 1,
-                        spaceIndex2);
-
-                    x = Double.valueOf(xString);
-                    y = Double.valueOf(yString);
-                    x = x - configDoc.getStencilBoundsMinX();
-                    y = y - configDoc.getStencilBoundsMinY();
-
-                    // add the new coords to the new string
-                    xNew = roundToDecimals(x * s, dn);
-                    yNew = roundToDecimals(y * s, dn);
-
-                    newPointsString += xNew + "," + yNew + " ";
-
-                    pointsString = pointsString.substring(
-                        Math.min(spaceIndex2 + 1, pointsString.length()),
-                        pointsString.length());
-
-                    spaceIndex = pointsString.indexOf(" ");
-                    spaceIndex2 = pointsString.indexOf(" ", spaceIndex + 1);
-
-                    if (spaceIndex == -1)
-                    {
-                        spaceIndex = pointsString.length();
-                    }
-
-                    if (spaceIndex2 == -1)
-                    {
-                        spaceIndex2 = pointsString.length();
-                    }
+                    /*
+                     * если была ошибка парсинга, то точку пропускаем
+                     */
+                    new Exception("Error in parse point (" + xString + ","
+                        + yString + ")", ex).printStackTrace();
                 }
             }
+            
+//            newPointsString = newPointsString.substring(0,
+//                (newPointsString.length() - 1));
+//            newPointsString = setPathRoot(newPointsString, configDoc);
 
-            newPointsString = newPointsString.substring(0,
-                (newPointsString.length() - 1));
-            newPointsString = setPathRoot(newPointsString, configDoc);
-            // String polyXML = "<path>" + System.getProperty("line.separator");
-            // mxPolylineProducer ph = new mxPolylineProducer();
-            // PointsParser p = new PointsParser(ph);
-            // p.parse(newPointsString, configDoc.getDecimalsToRound());
-            // polyXML += ph.getLines();
-
-            // if (element.getNodeName().equals("polygon"))
-            // {
-            // polyXML += "<close/>" + System.getProperty("line.separator");
-            // }
-            //
-            // polyXML += "</path>" + System.getProperty("line.separator");
-            mxPolyParser pp = new mxPolyParser();
-            return pp.createShape(newPointsString, xmlDoc, dn,
+            mxPolyParser2 pp = new mxPolyParser2();
+            return pp.createShape(pointList, xmlDoc, dn,
                 element.getNodeName());
             // return returnXmlFragment(xmlDoc, polyXML);
         }
@@ -624,51 +566,15 @@ public class Shape2Xml
         if (tranformString != null && tranformString.contains("matrix"))
         {
             double rot = 0;
-            double a = 0;
-            double b = 0;
-            double c = 0;
-            double d = 0;
-            double e = 0;
-            double f = 0;
-            String aString;
-            String bString;
-            String cString;
-            String dString;
-            String eString;
-            String fString;
 
-            tranformString = tranformString.replaceAll(",", "");
-            int startCurrIndex = tranformString.indexOf("matrix(");
-            int endCurrIndex = tranformString.indexOf(" ", startCurrIndex);
-            aString = tranformString.substring(startCurrIndex + 7,
-                endCurrIndex);
+            List<Double> coeffList = extractMatrixCoeff(tranformString);
 
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = tranformString.indexOf(" ", startCurrIndex);
-            bString = tranformString.substring(startCurrIndex, endCurrIndex);
-
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = tranformString.indexOf(" ", startCurrIndex);
-            cString = tranformString.substring(startCurrIndex, endCurrIndex);
-
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = tranformString.indexOf(" ", startCurrIndex);
-            dString = tranformString.substring(startCurrIndex, endCurrIndex);
-
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = tranformString.indexOf(" ", startCurrIndex);
-            eString = tranformString.substring(startCurrIndex, endCurrIndex);
-
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = tranformString.indexOf(")", startCurrIndex);
-            fString = tranformString.substring(startCurrIndex, endCurrIndex);
-
-            a = Double.valueOf(aString);
-            b = Double.valueOf(bString);
-            c = Double.valueOf(cString);
-            d = Double.valueOf(dString);
-            e = Double.valueOf(eString);
-            f = Double.valueOf(fString);
+            double a = coeffList.get(0).doubleValue();
+            double b = coeffList.get(1).doubleValue();
+            double c = coeffList.get(2).doubleValue();
+            double d = coeffList.get(3).doubleValue();
+            double e = coeffList.get(4).doubleValue();
+            double f = coeffList.get(5).doubleValue();
 
             double x1 = 2;
             double y1 = 2;
@@ -701,50 +607,15 @@ public class Shape2Xml
 
         if (trString != null && trString.contains("matrix"))
         {
-            double a = 0;
-            double b = 0;
-            double c = 0;
-            double d = 0;
-            double e = 0;
-            double f = 0;
-            String aString;
-            String bString;
-            String cString;
-            String dString;
-            String eString;
-            String fString;
+            // trString = trString.replaceAll(",", "");
+            List<Double> coeffList = extractMatrixCoeff(trString);
 
-            trString = trString.replaceAll(",", "");
-            int startCurrIndex = trString.indexOf("matrix(");
-            int endCurrIndex = trString.indexOf(" ", startCurrIndex);
-            aString = trString.substring(startCurrIndex + 7, endCurrIndex);
-
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = trString.indexOf(" ", startCurrIndex);
-            bString = trString.substring(startCurrIndex, endCurrIndex);
-
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = trString.indexOf(" ", startCurrIndex);
-            cString = trString.substring(startCurrIndex, endCurrIndex);
-
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = trString.indexOf(" ", startCurrIndex);
-            dString = trString.substring(startCurrIndex, endCurrIndex);
-
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = trString.indexOf(" ", startCurrIndex);
-            eString = trString.substring(startCurrIndex, endCurrIndex);
-
-            startCurrIndex = endCurrIndex + 1;
-            endCurrIndex = trString.indexOf(")", startCurrIndex);
-            fString = trString.substring(startCurrIndex, endCurrIndex);
-
-            a = Double.valueOf(aString);
-            b = Double.valueOf(bString);
-            c = Double.valueOf(cString);
-            d = Double.valueOf(dString);
-            e = Double.valueOf(eString);
-            f = Double.valueOf(fString);
+            double a = coeffList.get(0).doubleValue();
+            double b = coeffList.get(1).doubleValue();
+            double c = coeffList.get(2).doubleValue();
+            double d = coeffList.get(3).doubleValue();
+            double e = coeffList.get(4).doubleValue();
+            double f = coeffList.get(5).doubleValue();
 
             double x = 0;
             double y = 0;
@@ -773,6 +644,49 @@ public class Shape2Xml
             element.setAttribute("x", Double.toString(xNew));
             element.setAttribute("y", Double.toString(yNew));
         }
+    }
+
+    private static List<Double> extractMatrixCoeff(String trString)
+    {
+        List<Double> coeffList = Arrays.asList(0d, 0d, 0d, 0d, 0d, 0d);
+        int startCurrIndex = trString.indexOf("matrix(");
+        int endCurrIndex = trString.indexOf(")", startCurrIndex);
+        startCurrIndex = startCurrIndex + 7;
+
+        String matrixContent = endCurrIndex > startCurrIndex
+            && startCurrIndex > -1 && endCurrIndex <= trString.length()
+                ? trString.substring(startCurrIndex, endCurrIndex)
+                : "";
+        if (matrixContent != null && !matrixContent.trim().isEmpty())
+        {
+            /*
+             * должны быть разделены запятыми, но вдруг пробелами
+             */
+            String[] elements = matrixContent.split(",");
+            if (elements.length != 6)
+                elements = matrixContent.split(" ");
+
+            if (elements.length == 6)
+            {
+                /*
+                 * Преобразуем эелементы матрицы в числа
+                 */
+                coeffList = Stream.of(elements).map(s -> {
+                    Double res;
+                    try
+                    {
+                        res = Double.parseDouble(s);
+                    }
+                    catch (Exception ex)
+                    {
+                        ex.printStackTrace();
+                        res = Double.valueOf(0);
+                    }
+                    return res;
+                }).collect(Collectors.toList());
+            }
+        }
+        return coeffList;
     }
 
     /**
@@ -1828,83 +1742,9 @@ public class Shape2Xml
             return null;
         }
 
-        double a = 0;
-        double b = 0;
-        double c = 0;
-        double d = 0;
-        double e = 0;
-        double f = 0;
-        String aString;
-        String bString;
-        String cString;
-        String dString;
-        String eString;
-        String fString;
+        List<Double> coeffList = extractMatrixCoeff(trString);
 
-        trString = trString.replaceAll(",", " ");
-        int startCurrIndex = trString.indexOf("matrix(");
-        int endCurrIndex = trString.indexOf(" ", startCurrIndex);
-        aString = trString.substring(startCurrIndex + 7, endCurrIndex);
-
-        startCurrIndex = endCurrIndex + 1;
-        endCurrIndex = trString.indexOf(" ", startCurrIndex);
-        bString = trString.substring(startCurrIndex, endCurrIndex);
-
-        startCurrIndex = endCurrIndex + 1;
-        endCurrIndex = trString.indexOf(" ", startCurrIndex);
-        cString = trString.substring(startCurrIndex, endCurrIndex);
-
-        startCurrIndex = endCurrIndex + 1;
-        endCurrIndex = trString.indexOf(" ", startCurrIndex);
-        dString = trString.substring(startCurrIndex, endCurrIndex);
-
-        startCurrIndex = endCurrIndex + 1;
-        endCurrIndex = trString.indexOf(" ", startCurrIndex);
-        eString = trString.substring(startCurrIndex, endCurrIndex);
-
-        startCurrIndex = endCurrIndex + 1;
-        endCurrIndex = trString.indexOf(")", startCurrIndex);
-        fString = trString.substring(startCurrIndex, endCurrIndex);
-
-        a = 0;
-        b = 0;
-        c = 0;
-        d = 0;
-        e = 0;
-        f = 0;
-
-        if (!aString.equals(""))
-        {
-            a = Double.valueOf(aString);
-        }
-
-        if (!bString.equals(""))
-        {
-            b = Double.valueOf(bString);
-        }
-
-        if (!cString.equals(""))
-        {
-            c = Double.valueOf(cString);
-        }
-
-        if (!dString.equals(""))
-        {
-            d = Double.valueOf(dString);
-        }
-
-        if (!eString.equals(""))
-        {
-            e = Double.valueOf(eString);
-        }
-
-        if (!fString.equals(""))
-        {
-            f = Double.valueOf(fString);
-        }
-
-        Double[] result = {a, b, c, d, e, f};
-        return result;
+        return coeffList.toArray(new Double[0]);
     }
 
     private static Double getDoubleAttribute(Element element, String attrName)
