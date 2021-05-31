@@ -177,7 +177,7 @@ public class Shape2Xml
              * Превращаем точки в строку вида x y, x1 y1, x2 y2, x3 y3
              */
             List<double[]> pointList = new ArrayList<double[]>();
-            for (int i = 0; i < pointStrArray.length - 1; i++)
+            for (int i = 0; i < pointStrArray.length - 1; i+=2)
             {
                 String xString = pointStrArray[i];
                 String yString = pointStrArray[i + 1];
@@ -191,7 +191,7 @@ public class Shape2Xml
 
                     double xNew = roundToDecimals(x * s, dn);
                     double yNew = roundToDecimals(y * s, dn);
-                    
+
                     pointList.add(new double[] {xNew, yNew});
                 }
                 catch (Exception ex)
@@ -203,14 +203,13 @@ public class Shape2Xml
                         + yString + ")", ex).printStackTrace();
                 }
             }
-            
-//            newPointsString = newPointsString.substring(0,
-//                (newPointsString.length() - 1));
-//            newPointsString = setPathRoot(newPointsString, configDoc);
+
+            // newPointsString = newPointsString.substring(0,
+            // (newPointsString.length() - 1));
+            // newPointsString = setPathRoot(newPointsString, configDoc);
 
             mxPolyParser2 pp = new mxPolyParser2();
-            return pp.createShape(pointList, xmlDoc, dn,
-                element.getNodeName());
+            return pp.createShape(pointList, xmlDoc, dn, element.getNodeName());
             // return returnXmlFragment(xmlDoc, polyXML);
         }
         else if (element.getNodeName().equals("circle")
