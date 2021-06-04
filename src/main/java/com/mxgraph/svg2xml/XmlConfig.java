@@ -100,7 +100,7 @@ public class XmlConfig
         return calculateBorder;
     }
 
-    private void setCalculateBorder(boolean calculateBorder)
+    public void setCalculateBorder(boolean calculateBorder)
     {
         this.calculateBorder = calculateBorder;
     }
